@@ -4,6 +4,7 @@
 #include "config.h"
 #include "text_metrics.h"
 #include "icons.h"
+#include <WiFi.h>
 // #include "fonts_externs.h"
 #include "gfx_metrics.h"
 #include "fonts_data.h"
@@ -41,6 +42,24 @@ static void printHeaderTextBar(EPaper& epaper, const String& lastUpdated) {
 
   String line = "XIAO ePaper | Weather: Open-Meteo | Last updated: " + lastUpdated;
   epaper.drawString(line, 10, 10);
+
+  // Draw Wi‑Fi icon at top-right above the header line. Use the same
+  // pixel height as the header font so it visually matches text height.
+  int fh = 0;
+#if defined(TFT_eSPI_VERSION) || defined(SEEED_GFX_H) || defined(ARDUINO_TFT_ESPI)
+  fh = epaper.fontHeight();
+#else
+  fh = glyphHeight(12);
+#endif
+  // Make icon 25% of the header font height (but at least 8px)
+  int iconH = fh / 4;
+  if (iconH < 8) iconH = 8;
+  const int iconLeft = WIDTH - 10 - iconH; // right-aligned with 10px margin
+  const int iconTop = max(0, (HEADER_H - iconH) / 2);
+  // Only draw the Wi‑Fi icon when the Wi‑Fi radio is on.
+  if (WiFi.getMode() != WIFI_OFF) {
+    drawWifiIcon(iconLeft, iconTop, iconH);
+  }
 }
 
 // ───────────────────────── Clock box (top-right) ─────────────────────────

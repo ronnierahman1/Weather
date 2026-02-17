@@ -382,6 +382,43 @@ void drawUvIcon(int cx, int cy, int s)
   epaper.drawString("  UV", cx - s, cy - 4 * s + 2);
 }
 
+// Draw a simple Wi‑Fi indicator anchored at (left, top). The icon is a
+// square of size `height` pixels. It draws three concentric arcs (by drawing
+// circle outlines and erasing their lower halves) and a filled dot at the
+// bottom center. Works with EPaper global.
+void drawWifiIcon(int left, int top, int height)
+{
+  if (height <= 8) {
+    // tiny fallback: a single dot
+    int cx = left + height/2;
+    int cy = top + height/2;
+    epaper.fillCircle(cx, cy, max(1, height/8), TFT_BLACK);
+    return;
+  }
+
+  const int cx = left + height/2;
+  const int cy = top + height/2;
+
+  // radii for the arcs (largest -> smallest)
+  int r1 = height/2 - 1;
+  int r2 = (int)(r1 * 0.66f);
+  int r3 = (int)(r1 * 0.33f);
+
+  // draw circle outlines (we'll erase lower halves to create arcs)
+  epaper.drawCircle(cx, cy, r1, TFT_BLACK);
+  epaper.drawCircle(cx, cy, r2, TFT_BLACK);
+  epaper.drawCircle(cx, cy, r3, TFT_BLACK);
+
+  // erase lower half of the circles so they become arcs
+  int eraseY = cy;
+  epaper.fillRect(cx - r1 - 1, eraseY, (r1 * 2) + 3, r1 + 2, TFT_WHITE);
+
+  // dot radius and position (slightly above bottom to sit visually centered)
+  int dotR = max(1, height / 12);
+  int dotY = top + height - dotR - 2;
+  epaper.fillCircle(cx, dotY, dotR, TFT_BLACK);
+}
+
 // void drawUvIcon1(int x, int y, int s)
 // {
 //   const int U = s;

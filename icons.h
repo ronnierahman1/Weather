@@ -22,5 +22,9 @@ int  tempDegCWidth(float t, int textPoint);
 
 void drawUvIcon(int x, int y, int s);
 
+// Draw a Wi‑Fi indicator as stacked arcs with a dot. Anchor at top-left with
+// given pixel height (icon is square height x height).
+void drawWifiIcon(int left, int top, int height);
+
 // TL anchor box size
 extern const int ICON_BOX_BASE;

@@ -3,6 +3,7 @@
 #include "globals.h"
 #include "text_metrics.h"
 #include "icons.h"
+#include <WiFi.h>
 #include "weather_data.h"
 #include "weather_binding.h"
 #include "weather_api.h"
@@ -158,6 +159,19 @@ static void drawHeader(EPaper& ep, const WeatherState& S) {
 
   hiLo("Today",    S.today);
   hiLo("Tomorrow", S.tomorrow);
+
+  // Draw Wi‑Fi icon at top-right of the header band when Wi‑Fi is enabled
+  int fh = 0;
+#if defined(TFT_eSPI_VERSION) || defined(SEEED_GFX_H) || defined(ARDUINO_TFT_ESPI)
+  fh = ep.fontHeight();
+#else
+  fh = glyphHeight(12);
+#endif
+  int iconH = fh / 4;
+  if (iconH < 8) iconH = 8;
+  const int iconLeft = SCR_W - PAD - iconH;
+  const int iconTop = HEADER_Y + 2; // slightly below top padding
+  if (WiFi.getMode() != WIFI_OFF) drawWifiIcon(iconLeft, iconTop, iconH);
 }
 
 // ───────────────────────── Daily forecast strip ─────────────────────────

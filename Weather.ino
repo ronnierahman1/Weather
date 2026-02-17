@@ -2,6 +2,8 @@
 #include <TFT_eSPI.h> // Seeed_GFX entry (EPAPER_ENABLE path)
 #include <WiFi.h>
 #include <time.h>
+#include <FS.h>
+using fs::FS;
 #include <WebServer.h>
 
 #include "settings.h"
@@ -37,12 +39,16 @@ bool hasFetchedPrayerData = false;
 bool hasFetchedWeatherData = false;
 bool hasPrayerTimeElapsed = false;
 int minute = 0;
-int sleep_seconds = 58;
+int sleep_seconds = 60000;
 // Single EPaper instance visible to all .cpp through globals.h
 EPaper epaper;
 
 // Simple web server for timezone control
 WebServer server(80);
+// simple web auth
+static const char* WEB_USER = "admin";
+static const char* WEB_PASS = "psw1";
+bool webAuthenticated = false;
 
 // App state
 WeatherState state;
@@ -138,6 +144,8 @@ static bool wifiConnect(bool showProgress = true)
   {
     String ip = WiFi.localIP().toString();
     if(showProgress) displayText(epaper, "Connected to Wi-Fi. IP: " + ip, 20, 40);
+    Serial.print("WiFi IP: ");
+    Serial.println(ip);
     delay(500);
     return true;
   }
@@ -271,10 +279,6 @@ void fetchData(bool showProgress = true)
   if(showProgress) displayText(epaper,"Fetching The Scientist... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 7);
   
   updateLastUpdatedLabelFromNow();
-  wifi_turnoff();
-  // delay(100); // to avoid spamming
-  if(showProgress) displayText(epaper,"Wifi Turned off...", x, y + lineSpacing * 8);
-  delay(500);
 }
 
 bool fetchWeatherData()
@@ -420,6 +424,25 @@ void setup()
 
   // start web server to allow timezone viewing/setting
   server.on("/", []() {
+    // require login
+    bool authed = webAuthenticated;
+    if (!authed && server.hasHeader("Cookie")) {
+      String c = server.header("Cookie");
+      if (c.indexOf("auth=1") >= 0) authed = true;
+    }
+    if (!authed) {
+      String login = "<html><head><title>Login</title></head><body>";
+      login += "<h2>Login</h2>";
+      login += "<form method=\"POST\" action=\"/login\">";
+      login += "Username: <input name=\"user\" type=\"text\"><br>";
+      login += "Password: <input name=\"pass\" type=\"password\"><br>";
+      login += "<input type=submit value=\"Log in\">";
+      login += "</form></body></html>";
+      Serial.println("[web] GET / -> login");
+      server.send(200, "text/html", login);
+      return;
+    }
+
     struct tm ti;
     char buf[64];
     if (getLocalTime(&ti)) {
@@ -428,32 +451,70 @@ void setup()
       strcpy(buf, "(time not available)");
     }
     int tz = getTimezoneHours();
-    String html = "<html><head><title>XIAO Time</title></head><body>";
-    html += "<h2>Device Time</h2>";
+    String html = "<html><head><title>XIAO Settings</title></head><body>";
+    html += "<h2>XIAO Settings</h2>";
     html += String("<p>Local time: <b>") + String(buf) + "</b></p>";
-    html += String("<p>Timezone (hours offset from UTC): <b>") + String(tz) + "</b></p>";
+    html += String("<p>Current Timezone (hours offset from UTC): <b>") + String(tz) + "</b></p>";
     html += "<form action=\"/set\" method=\"GET\">";
-    html += "Set timezone (integer -12..+14): <input name=tz type=number step=1 value=\"" + String(tz) + "\">";
+    html += "Set timezone (integer -12..+14): <input name=tz type=number step=1 value=\"" + String(tz) + "\"><br>";
+    html += "Page pause (ms): <input name=\"sleep\" type=number step=100 value=\"" + String(sleep_seconds) + "\"><br>";
     html += "<input type=submit value=Set></form>";
+    html += "<p><a href=\"/logout\">Logout</a></p>";
     html += "</body></html>";
+    Serial.println("[web] GET /");
     server.send(200, "text/html", html);
   });
 
   server.on("/set", []() {
     if (!server.hasArg("tz")) {
+      Serial.println("[web] /set missing tz");
       server.send(400, "text/plain", "Missing tz parameter");
       return;
     }
     String v = server.arg("tz");
     int tz = v.toInt();
     saveTimezoneHours(tz);
+    if (server.hasArg("sleep")) {
+      int s = server.arg("sleep").toInt();
+      if (s < 1000) s = 1000;
+      if (s > 600000) s = 600000;
+      sleep_seconds = s;
+      Serial.printf("[web] set sleep=%d\n", s);
+    }
     // reconfigure NTP/localtime offset
     configTime(GMT_OFFSET_SEC, DAYLIGHT_OFFSET_SEC, NTP_SERVER);
+    Serial.printf("[web] set tz=%d\n", tz);
+    server.sendHeader("Location", "/");
+    server.send(303, "text/plain", "");
+  });
+
+  server.on("/login", HTTP_POST, []() {
+    String user = server.arg("user");
+    String pass = server.arg("pass");
+    if (user == String(WEB_USER) && pass == String(WEB_PASS)) {
+      webAuthenticated = true;
+      Serial.println("[web] login success");
+      server.sendHeader("Set-Cookie", "auth=1; Path=/");
+      server.sendHeader("Location", "/");
+      server.send(303, "text/plain", "");
+    } else {
+      Serial.println("[web] login failed");
+      String out = "<html><body><h3>Login failed</h3><p><a href=\"/\">Try again</a></p></body></html>";
+      server.send(401, "text/html", out);
+    }
+  });
+
+  server.on("/logout", []() {
+    webAuthenticated = false;
+    server.sendHeader("Set-Cookie", "auth=; Path=/; Max-Age=0");
     server.sendHeader("Location", "/");
     server.send(303, "text/plain", "");
   });
 
   server.begin();
+  Serial.println("[web] server.begin()");
+  Serial.print("[web] WiFi.status(): "); Serial.println(WiFi.status());
+  Serial.print("[web] Local IP: "); Serial.println(WiFi.localIP());
   updateLastUpdatedLabelFromNow();
   // Init per-minute tracking
   struct tm ti;
@@ -463,11 +524,11 @@ void setup()
     lastDrawnYday = ti.tm_yday;
   }
 
-  // Initial full render
-  deepClean(epaper);
-  displayMainWeather();
-  // displayWeatherGraphDashboard();
-  sleep(sleep_seconds);    
+  // // Initial full render
+  // deepClean(epaper);
+  // displayMainWeather();
+  // // displayWeatherGraphDashboard();
+  // delay(sleep_seconds);    
 
   nextWeatherAt = millis() + WEATHER_INTERVAL_MS;
 }
@@ -477,85 +538,113 @@ void setup()
 //------------------------------------------------------
 void loop()
 {
-  PageRenderMode mode;// = First_Page;
-    deepClean(epaper);
-    displayWeatherGraphDashboard();
-    server.handleClient();
-    sleep(sleep_seconds);
+  // Non-blocking page scheduler:
+  // - server.handleClient() runs constantly (instant web UI)
+  // - only one heavy render happens per "sleep_seconds"
+  // - second pages (Second_Page) skip deepClean() like original code
 
-    mode = First_Page;
-    deepClean(epaper);
-    displayHackerNewsDashboard(mode);
-    server.handleClient();
-    sleep(sleep_seconds);
+  static bool inited = false;
+  static uint32_t nextStepAtMs = 0;
+  static uint8_t step = 0;
 
-    mode = Second_Page;
-    // deepClean(epaper);
-    displayHackerNewsDashboard(mode);
-    server.handleClient();
-    sleep(sleep_seconds);
+  server.handleClient();
+  delay(1);
 
-    // mode = Full_Page;
-    // deepClean(epaper);
-    // displayXdaDevelopersNewsDashboard();
-    // sleep(sleep_seconds);
+  const uint32_t nowMs = millis();
 
-    deepClean(epaper);
-    displaySalahDashboard();
-    server.handleClient();
-    sleep(sleep_seconds);    
+  if (!inited)
+  {
+    inited = true;
+    nextStepAtMs = nowMs;
+    step = 0;
+  }
 
-    mode = First_Page;
-    deepClean(epaper);
-    displayScienceDailyNewsDashboard(mode);
-    server.handleClient();
-    sleep(sleep_seconds);
+  if ((int32_t)(nowMs - nextStepAtMs) < 0)
+    return;
 
-    mode = Second_Page;
-    // deepClean(epaper);
-    displayScienceDailyNewsDashboard(mode);
-    server.handleClient();
-    sleep(sleep_seconds);
-    
-    deepClean(epaper);
-    displayWeatherDashboard();
-    server.handleClient();
-    sleep(sleep_seconds);
-    
-    // deepClean(epaper);
-    //displayTheScientistNewsDashboard(mode);
-    // sleep(sleep_seconds);
-    
-    mode = First_Page;
-    deepClean(epaper);
-    displayTheScientistNewsDashboard(mode);
-    server.handleClient();
-    sleep(sleep_seconds);
-    
-    mode = Second_Page;
-    // deepClean(epaper);
-    displayTheScientistNewsDashboard(mode);
-    server.handleClient();
-    sleep(sleep_seconds);
-    
-     mode = Full_Page;
-    // displayNewScientistNewsDashboard();
-    deepClean(epaper);
-    displayMainWeather();
-    server.handleClient();
-    sleep(sleep_seconds);
+  nextStepAtMs = nowMs + (uint32_t)sleep_seconds;
 
-    mode = First_Page;
-    deepClean(epaper);
-    displayNewScientistNewsDashboard(mode);
-    sleep(sleep_seconds);
-    
-    mode = Second_Page;
-    // deepClean(epaper);
-    displayNewScientistNewsDashboard(mode);
-    sleep(sleep_seconds);
-    
-  fetchData(false);
-  updateLastUpdatedLabelFromNow();
-  deepClean(epaper);
+  PageRenderMode mode;
+
+  switch (step)
+  {
+    case 0: 
+      deepClean(epaper);
+      displayMainWeather();
+      break;
+    case 1:
+      deepClean(epaper);
+      displayWeatherGraphDashboard();
+      break;
+
+    case 2:
+      wifi_turnoff(); // to save power during graph rendering
+      mode = First_Page;
+      deepClean(epaper);
+      displayHackerNewsDashboard(mode);
+      break;
+
+    case 3:
+      mode = Second_Page;
+      displayHackerNewsDashboard(mode);
+      break;
+
+    case 4:
+      deepClean(epaper);
+      displaySalahDashboard();
+      break;
+
+    case 5:
+      mode = First_Page;
+      deepClean(epaper);
+      displayScienceDailyNewsDashboard(mode);
+      break;
+
+    case 6:
+      mode = Second_Page;
+      displayScienceDailyNewsDashboard(mode);
+      break;
+
+    case 7:
+      deepClean(epaper);
+      displayWeatherDashboard();
+      break;
+
+    case 8:
+      mode = First_Page;
+      deepClean(epaper);
+      displayTheScientistNewsDashboard(mode);
+      break;
+
+    case 9:
+      mode = Second_Page;
+      displayTheScientistNewsDashboard(mode);
+      break;
+
+    // case 10:
+    //   mode = Full_Page;
+    //   deepClean(epaper);
+    //   displayMainWeather();
+    //   break;
+
+    case 10:
+      mode = First_Page;
+      deepClean(epaper);
+      displayNewScientistNewsDashboard(mode);
+      break;
+
+    case 11:
+      mode = Second_Page;
+      displayNewScientistNewsDashboard(mode);
+      break;
+
+    case 12:
+      wifiConnect(false); // re-enable Wi-Fi for data fetching
+      fetchData(false);
+      updateLastUpdatedLabelFromNow();
+      deepClean(epaper);
+      break;
+  }
+
+  step = (uint8_t)((step + 1) % 14);
 }
