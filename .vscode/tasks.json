@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Arduino: Compile (XIAO_ESP32C3 Huge APP)",
+      "type": "shell",
+      "command": "arduino-cli compile -v --fqbn esp32:esp32:XIAO_ESP32C3:PartitionScheme=huge_app,FlashSize=4M,FlashMode=dio,FlashFreq=80,CPUFreq=160,CDCOnBoot=default,UploadSpeed=921600,DebugLevel=none,EraseFlash=none .",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Upload (XIAO_ESP32C3 Huge APP)",
+      "type": "shell",
+      "command": "arduino-cli upload -p COM5 --fqbn esp32:esp32:XIAO_ESP32C3:PartitionScheme=huge_app,FlashSize=4M,FlashMode=dio,FlashFreq=80,CPUFreq=160,CDCOnBoot=default,UploadSpeed=921600,DebugLevel=none,EraseFlash=none .",
+      "dependsOn": "Arduino: Compile (XIAO_ESP32C3 Huge APP)",
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Monitor 115200",
+      "type": "shell",
+      "command": "arduino-cli monitor -p ${input:serialPort} -c baudrate=115200",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "serialPort",
+      "type": "promptString",
+      "description": "Serial port (e.g., COM5 or /dev/ttyACM0)",
+      "default": "COM5"
+    }
+  ]
+}

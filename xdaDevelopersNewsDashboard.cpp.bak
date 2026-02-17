@@ -1,0 +1,103 @@
+// xdaDevelopersNewsDashboard.cpp
+// 3-column XDA Developers News dashboard (max 30 items) using RSS feed.
+// Reuses your EPaper driver semantics: epaper.setRotation(0); epaper.update().
+#pragma once
+#include <Arduino.h>
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+#include "ui.h"
+#include "config.h"
+#include "text_metrics.h"
+#include "icons.h"
+#include "hackerNewsDashboard.h"
+#include "gfx_metrics.h"
+#include "fonts_data.h"
+#include "xdaDevelopersNewsDashboard.h"
+// #include "Fonts/FreeSans8pt7b.h"
+#include "rssFeedHandler.h"
+#include "xda_feeds.h"
+
+
+bool fetchXdaNews(xdaNewsItem outItem[], int& outCount)
+{
+  String titles[numberOfNewsItems];
+  outCount = 0;
+  String body;
+  if (fetchXdaNews(titles, outCount, "https://www.xda-developers.com/feed/category/pc-hardware/"))
+    return false;
+  outItem[0].link = "https://www.xda-developers.com/feed/category/pc-hardware/";
+  outItem[0].headerText = "XDA Developers News - PC hardware";
+  return true;
+}
+
+// Public: render 3×10 dashboard
+void renderXdaDevelopersNewsDashboard(EPaper &ep,
+                                      const String items[numberOfNewsItems], int count,
+                                      const String &lastUpdatedHHMM = "")
+{
+  ep.setRotation(0);
+  ep.fillScreen(TFT_WHITE);
+
+  // Header
+  const int HEAD_SZ = 2;
+  const int headH = charH(HEAD_SZ) + 8;
+  ep.setTextSize(1);
+  ep.setFreeFont(&FreeSansBold9pt7b);
+
+  String dt;
+  if (lastUpdatedHHMM.length())
+  {
+    dt = lastUpdatedHHMM;
+  }
+  else
+  {
+    struct tm ti{};
+    if (getLocalTime(&ti))
+    {
+      char b1[6];
+      strftime(b1, sizeof(b1), "%H:%M", &ti);
+      char b2[20];
+      strftime(b2, sizeof(b2), "%d %b %Y", &ti);
+      dt = String(b1) + ", " + String(b2);
+    }
+    else
+      dt = F("--:--, -- --- ----");
+  }
+
+  String header = F("XDA Developers News - PC hardware | Last Updated: ");
+  header += dt;
+
+  // 3 columns × 10 items
+  const int COLS = 1, ROWS = 10;
+  const int colW = 800 / COLS;
+  const int topY = headH + 10;
+  const int BOT = 480 - 6;
+  const int itemSize = 1;
+  const int lineGap = 2;
+
+  // for (int col = 0; col < ceil(count / (float)ROWS); ++col)
+  // {
+    int x = 8;
+    int y = topY;
+    printHeaderText(ep, header, headH);
+    for (int r = 0; r < ROWS; ++r)
+    {
+      // int idx = col * ROWS + r;
+      if (r >= count)
+        break;
+      String num = String(r + 1) + F(".");
+      y = printBoldTextLine(ep, num, items[r], x, y, colW - 16, lineGap);
+      y += 6;
+      // y = printNormalTextLine(ep, items[idx][1], x, y, colW - 16, lineGap);
+      // y += 5;
+      printDottedLine(ep, y, 0, colW);
+      y += 5;
+    }
+    ep.update(); // full frame update
+    // if (col < 1)
+    // {
+    //   sleep(30);
+    //   deepClean(ep);
+    // }
+  // }
+}
