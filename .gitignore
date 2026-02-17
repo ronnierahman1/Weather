@@ -1,0 +1,21 @@
+# Arduino IDE generated files
+*.ino.hex
+*.ino.eep
+*.elf
+*.bin
+*.lss
+*.map
+*.sym
+*.dwo
+*.d
+*.o
+
+# Common OS-generated files
+.DS_Store # macOS
+Thumbs.db # Windows
+*~        # Linux/macOS backup files
+
+# IDE specific folders/files (if not using Arduino IDE)
+.idea/      # Intellij/PlatformIO
+.vscode/    # VS Code
+build/      # Build folder
