@@ -88,20 +88,6 @@ void displayText(EPaper& epaper, const String &text, int x, int y, bool update =
   }
 }
 
-// void displayTimeDate(EPaper epaper)
-// {
-//   struct tm ti;
-//   if (!getLocalTime(&ti))
-//     return;
-//   char timeStr[16];
-//   strftime(timeStr, sizeof(timeStr), "%H:%M", &ti);
-//   char dateStr[32];
-//   strftime(dateStr, sizeof(dateStr), "%a, %d %b %Y", &ti);
-//   epaper.drawString(timeStr, 10, 0);
-//   epaper.drawString(dateStr, 80, 0);
-//   epaper.update();
-// }
-
 static String two(int v)
 {
   char b[8];
@@ -213,111 +199,75 @@ void fetchData(bool showProgress = true)
   int x=20, y=70, lineSpacing=25;
 
   fd[0] =(fetchDataDisplay){"Fetching Data...", x, y};
-  // if(showProgress) displayText(epaper, "Fetching Data...", x, y);
-
   y += lineSpacing;
   // current + hourly
-  // fd[1] = (fetchDataDisplay){"Fetching Current + Hourly Weather...", x, y};
-  // if(showProgress) displayText(epaper, "Fetching Current + Hourly Weather...", x, y);
   // get the time it takes to fetch weather
   unsigned long start = millis();
   if(!fetchCurrentAndHourlyFromPi(state))
     fetchCurrentAndHourly(state); // current + hourly
   unsigned long duration = millis() - start;
+
   // displayTimeDate(epaper);
   fd[1] = (fetchDataDisplay){"Fetching Current + Hourly Weather... Done. Took " + String(duration) + "ms", x, y};
-  // if(showProgress) displayText(epaper, "Fetching Current + Hourly Weather... Done. Took " + String(duration) + "ms", x, y);
-  // displayTimeDate(epaper);
-  // delay(100); // to avoid spamming
 
 
   // daily
-  // fd[3] = (fetchDataDisplay){"Fetching 7-Days' Weather...", x, y + lineSpacing};
-  // if(showProgress) displayText(epaper, "Fetching 7-Days' Weather...", x, y + lineSpacing);
   start = millis();
   if(!fetchDailyFromPi(state))
     fetchDaily(state); // 7-day daily
   duration = millis() - start;
   fd[2] = (fetchDataDisplay){"Fetching 7-Days' Weather... Done. Took " + String(duration) + "ms", x, y + lineSpacing};
-  // if(showProgress) displayText(epaper, "Fetching 7-Days' Weather... Done. Took " + String(duration) + "ms", x, y + lineSpacing);
-  // delay(100); // to avoid spamming
   bindWeatherForDashboard(state);
   
   
   // prayers + hijri
-  // fd[5] = (fetchDataDisplay){"Fetching Prayers + Hijri...", x, y + lineSpacing * 2};
-  // if(showProgress) displayText(epaper,"Fetching Prayers + Hijri...", x, y + lineSpacing * 2);
   start = millis();
   if(!fetchPrayersAndHijriFromPi(state))
     fetchPrayersAndHijri(state); // prime at boot
   duration = millis() - start;
   fd[3] = (fetchDataDisplay){"Fetching Prayers + Hijri... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 2};
-  // if(showProgress) displayText(epaper,"Fetching Prayers + Hijri... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 2);
-  // delay(100); // to avoid spamming
   
   // fetchHackerNews
-  // fd[7] = (fetchDataDisplay){"Fetching Hacker News...", x, y + lineSpacing * 3};
-  // if(showProgress) displayText(epaper,"Fetching Hacker News...", x, y + lineSpacing * 3);
   start = millis();
   fetchHackerNewsFromPi(hackernewsTitles, hackernewsCount);
   duration = millis() - start;
   fd[4] = (fetchDataDisplay){"Fetching Hacker News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 3};
-  // if(showProgress) displayText(epaper,"Fetching Hacker News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 3 );
-  // delay(100); // to avoid spamming
 
-  // fetchXdaNews(xdaTitles, xdaCount);
-  // fd[9] = (fetchDataDisplay){"Fetching XDA News...", x, y + lineSpacing * 4};
-  // if(showProgress) displayText(epaper,"Fetching XDA News...", x, y + lineSpacing * 4);
   start = millis();
-  // //make fetchXdaNews to report progress
-  // fetchXdaNews(xdaNewsItems, xdaCount,"Fetching XDA News...", x, y + lineSpacing * 4);
+  //make fetchXdaNews to report progress
   duration = millis() - start;
   fd[5] = (fetchDataDisplay){"Fetching XDA News... skipped. Work in progress. Took " + String(duration) + "ms", x, y + lineSpacing * 4};
-  // if(showProgress) displayText(epaper,"Fetching XDA News...                     skipped. Work in progress. Took " + String(duration) + "ms", x, y + lineSpacing * 4);
-  // delay(100); // to avoid spamming
 
   // fetchScienceDailyNews
-  // fd[11] = (fetchDataDisplay){"Fetching Science Daily News...", x, y + lineSpacing * 5};
-  // if(showProgress) displayText(epaper,"Fetching Science Daily...", x, y + lineSpacing * 5);
   start = millis();
   fetchScienceDailyNewsFromPi(scienceDailyTitles, scienceDailyCount);
   duration = millis() - start;
   fd[6] = (fetchDataDisplay){"Fetching Science Daily News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 5};
-  // if(showProgress) displayText(epaper,"Fetching Science Daily... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 5);
-  // delay(100); // to avoid spamming
 
   // fetchNewScientistNews
-  // fd[13] = (fetchDataDisplay){"Fetching New Scientist News...", x, y + lineSpacing * 6};
-  // if(showProgress) displayText(epaper,"Fetching New Scientist...", 20, y + lineSpacing * 6);
   start = millis();
   fetchNewScientistNewsFromPi(newScientistTitles, newScientistCount);
   duration = millis() - start;
   fd[7] = (fetchDataDisplay){"Fetching New Scientist News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 6};
-  // if(showProgress) displayText(epaper,"Fetching New Scientist... Done. Took " + String(duration) + "ms", 20, y + lineSpacing * 6);
-  // delay(100); // to avoid spamming
 
   // fetchTheScientistNews
-  // fd[15] = (fetchDataDisplay){"Fetching The Scientist News...", x, y + lineSpacing * 7};
-  // if(showProgress) displayText(epaper,"Fetching The Scientist...", x, y + lineSpacing * 7);
   start = millis();
   fetchTheScientistNewsFromPi(theScientistTitles, theScientistCount);
   duration = millis() - start;
   fd[8] = (fetchDataDisplay){"Fetching The Scientist News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 7};
-  // if(showProgress) displayText(epaper,"Fetching The Scientist... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 7);
   if(showProgress) {
   for(int i=0;i<9;i++){
     displayText(epaper, fd[i].message, fd[i].x, fd[i].y, false);
     }
   epaper.update();
   }
-    // if(fd[i].duration > 0) delay(1000); // to allow reading the "done" message
   updateLastUpdatedLabelFromNow();
 }
 
 bool fetchWeatherData()
 {
   // Fetch weather data and update state
-  // 2) Weather every 15 minutes (full dashboard refresh)
+  // Weather every 15 minutes (full dashboard refresh)
   bool ok1 = fetchCurrentAndHourly(state);
   bool ok2 = fetchDaily(state);
   bindWeatherForDashboard(state);
@@ -557,12 +507,6 @@ void setup()
     lastDrawnYday = ti.tm_yday;
   }
 
-  // // Initial full render
-  // deepClean(epaper);
-  // displayMainWeather();
-  // // displayWeatherGraphDashboard();
-  // delay(sleep_seconds);    
-
   nextWeatherAt = millis() + WEATHER_INTERVAL_MS;
 }
 
@@ -574,8 +518,8 @@ void loop()
   // Non-blocking page scheduler:
   // - server.handleClient() runs constantly (instant web UI)
   // - only one heavy render happens per "sleep_seconds"
-  // - second pages (Second_Page) skip deepClean() like original code
-
+  // - second pages (Second_Page) skip deepClean()
+  
   static bool inited = false;
   static uint32_t nextStepAtMs = 0;
   static uint8_t step = 0;
