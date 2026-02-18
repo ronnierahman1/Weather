@@ -55,7 +55,7 @@ static void printHeaderTextBar(EPaper& epaper, const String& lastUpdated) {
   int iconH = fh / 4;
   if (iconH < 8) iconH = 8;
   const int iconLeft = WIDTH - 10 - iconH; // right-aligned with 10px margin
-  const int iconTop = max(0, (HEADER_H - iconH) / 2);
+  const int iconTop = max(0, (HEADER_H - iconH) / 2)-10;
   // Only draw the Wi‑Fi icon when the Wi‑Fi radio is on.
   if (WiFi.getMode() != WIFI_OFF) {
     drawWifiIcon(iconLeft, iconTop, iconH);

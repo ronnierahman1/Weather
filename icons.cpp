@@ -382,42 +382,62 @@ void drawUvIcon(int cx, int cy, int s)
   epaper.drawString("  UV", cx - s, cy - 4 * s + 2);
 }
 
-// Draw a simple Wi‑Fi indicator anchored at (left, top). The icon is a
+// Draw a simple Wi‑Fi indicator anchored at (right, top). The icon is a
 // square of size `height` pixels. It draws three concentric arcs (by drawing
 // circle outlines and erasing their lower halves) and a filled dot at the
 // bottom center. Works with EPaper global.
 void drawWifiIcon(int left, int top, int height)
 {
-  if (height <= 8) {
-    // tiny fallback: a single dot
-    int cx = left + height/2;
-    int cy = top + height/2;
-    epaper.fillCircle(cx, cy, max(1, height/8), TFT_BLACK);
+  if (height < 16) {
+    int cx = left + height / 2;
+    int cy = top + height / 2;
+    epaper.fillCircle(cx, cy, max(1, height / 6), TFT_BLACK);
     return;
   }
 
-  const int cx = left + height/2;
-  const int cy = top + height/2;
+  const int cx = left + height / 2;
+  const int baseY = top + height - 2;   // bottom reference
 
-  // radii for the arcs (largest -> smallest)
-  int r1 = height/2 - 1;
-  int r2 = (int)(r1 * 0.66f);
-  int r3 = (int)(r1 * 0.33f);
+  const int thickness = max(1, height / 10);
+  const int gap       = max(3, height / 14);
 
-  // draw circle outlines (we'll erase lower halves to create arcs)
-  epaper.drawCircle(cx, cy, r1, TFT_BLACK);
-  epaper.drawCircle(cx, cy, r2, TFT_BLACK);
-  epaper.drawCircle(cx, cy, r3, TFT_BLACK);
+  const float startAngle = 40.0f;
+  const float endAngle   = 140.0f;
 
-  // erase lower half of the circles so they become arcs
-  int eraseY = cy;
-  epaper.fillRect(cx - r1 - 1, eraseY, (r1 * 2) + 3, r1 + 2, TFT_WHITE);
+  auto drawArcBand = [&](int radius)
+  {
+    int innerR = radius - thickness;
 
-  // dot radius and position (slightly above bottom to sit visually centered)
-  int dotR = max(1, height / 12);
-  int dotY = top + height - dotR - 2;
-  epaper.fillCircle(cx, dotY, dotR, TFT_BLACK);
+    for (float a = startAngle; a <= endAngle; a += 2.0f)
+    {
+      float rad = a * DEG_TO_RAD;
+
+      int xOuter = cx + (int)(cos(rad) * radius);
+      int yOuter = baseY - (int)(sin(rad) * radius);
+
+      int xInner = cx + (int)(cos(rad) * innerR);
+      int yInner = baseY - (int)(sin(rad) * innerR);
+
+      epaper.drawLine(xInner, yInner, xOuter, yOuter, TFT_BLACK);
+    }
+  };
+
+  // 4 arcs (largest → smallest)
+  int r1 = height / 2;
+  int r2 = r1 - thickness - gap;
+  int r3 = r2 - thickness - gap;
+  int r4 = r3 - thickness - gap;
+
+  drawArcBand(r1);
+  drawArcBand(r2);
+  drawArcBand(r3);
+  drawArcBand(r4);
+
+  // Dot
+  int dotR = max(3, thickness - 1);
+  epaper.fillCircle(cx, baseY - dotR, dotR, TFT_BLACK);
 }
+
 
 // void drawUvIcon1(int x, int y, int s)
 // {

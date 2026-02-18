@@ -168,9 +168,9 @@ static void drawHeader(EPaper& ep, const WeatherState& S) {
   fh = glyphHeight(12);
 #endif
   int iconH = fh / 4;
-  if (iconH < 8) iconH = 8;
+  iconH = 20;
   const int iconLeft = SCR_W - PAD - iconH;
-  const int iconTop = HEADER_Y + 2; // slightly below top padding
+  const int iconTop = HEADER_Y -30; // slightly below top padding
   if (WiFi.getMode() != WIFI_OFF) drawWifiIcon(iconLeft, iconTop, iconH);
 }
 
