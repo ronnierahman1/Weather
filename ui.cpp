@@ -348,9 +348,12 @@ static void drawDaily(EPaper& epaper, const WeatherState& S) {
     epaper.drawFastVLine(x, DAILY_Y, DAILY_H, TFT_BLACK);
 
     // epaper.setTextSize(1);
+
     String mmdd = S.dailyDate[i].length() >= 5 ? S.dailyDate[i].substring(5) : S.dailyDate[i];
+    Serial.println("Daily date: " + S.dailyDate[i]);
+    Serial.println("mmdd: " + mmdd);
     epaper.setFreeFont(&FreeSansBold8pt7b);
-    epaper.drawString(S.dailyDayAbbr[i] + " " + mmdd, xText, y0);
+    epaper.drawString(S.dailyDayAbbr[i] + " " + S.dailyDate[i], xText, y0);
 
     drawWeatherIcon(iconForWMO(S.dailyCode[i], true), xMid, y0+30, 1);
 

@@ -7,15 +7,15 @@ static const char * PREF_NS = "weather";
 static const char * KEY_TZ_HOURS = "tz_hours";
 
 // Provide the global definition of GMT_OFFSET_SEC
-long GMT_OFFSET_SEC = 0;
+long GMT_OFFSET_SEC = 3600L;
 
 static Preferences prefs;
 
 void initSettings()
 {
   prefs.begin(PREF_NS, false);
-  // read tz hours (int), default 0
-  int tz = prefs.getInt(KEY_TZ_HOURS, 0);
+  // read tz hours (int), default 1
+  int tz = prefs.getInt(KEY_TZ_HOURS, 1);
   // clamp to reasonable range -12..+14
   if (tz < -12) tz = -12;
   if (tz > 14) tz = 14;
