@@ -21,7 +21,7 @@ jobs:
         uses: arduino/arduino-lint-action@v2
         with:
           project-type: sketch
-          path: .
+          path: ${{ github.workspace }}
 
   compile:
     name: Compile sketch
