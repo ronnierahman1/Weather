@@ -5,6 +5,7 @@
 #include "text_metrics.h"
 #include "icons.h"
 #include <WiFi.h>
+#include "tuya_client.h"
 // #include "fonts_externs.h"
 #include "gfx_metrics.h"
 #include "fonts_data.h"
@@ -23,6 +24,42 @@ static constexpr int HOURLY_H = 100;
 static constexpr int DAILY_Y  = HOURLY_Y + HOURLY_H;
 static constexpr int DAILY_H  = HEIGHT - DAILY_Y;
 String getNextSalahRemainingTimeText(const WeatherState& S, tm ti);
+//------------------------------------------------------------------------
+static void drawTuyaPanel(EPaper& epaper, int x, int y, int w, int h) {
+  const TuyaSnapshot& snapshot = getTuyaSnapshot();
+
+  epaper.fillRect(x, y, w, h, TFT_WHITE);
+  // epaper.drawFastVLine(x - 8, y, h, TFT_BLACK);
+
+  int lineY = y + 2;
+  epaper.setTextSize(1);
+  epaper.setFreeFont(&FreeSansBold9pt7b);
+  epaper.drawString("Tuya", x, lineY);
+  lineY += 18;
+  epaper.setFreeFont(&FreeSansBold8pt7b);
+  if (!snapshot.hasData) {
+    
+    epaper.drawString("No sensor data", x, lineY + 6);
+    return;
+  }
+
+  // epaper.setFreeFont(&FreeSansBold8pt7b);
+  for (int i = 0; i < snapshot.zoneCount; ++i) {
+    if (lineY + 20 >= y + h) break;
+    epaper.drawString(snapshot.zones[i].label, x, lineY);
+    lineY += 18;
+
+    String metrics = "T " + snapshot.zones[i].temp + "  H " + snapshot.zones[i].hum + "  B " + snapshot.zones[i].bat;
+    epaper.drawString(metrics, x + 2, lineY);
+    lineY += 18;
+  }
+  // The raspberry pi cpu temp is currently disabled
+  // if (lineY + 16 < y + h && snapshot.cpuTemp != "--") {
+  //   epaper.drawFastHLine(x, lineY + 2, w - 4, TFT_BLACK);
+  //   lineY += 14;
+  //   epaper.drawString("CPU " + snapshot.cpuTemp, x, lineY);
+  // }
+}
 
 String CurrentLocalTime()
 {
@@ -75,11 +112,16 @@ void drawClockBox(EPaper& epaper, const WeatherState& S, bool clearFirst = false
     const int CLOCK_W = WIDTH - CLOCK_X - 10, // 390
               CLOCK_H = NOW_H - 20; // 180
     const int main_clock_offset = 5, date_Y_offset = 45;
+    const int TUYA_X = (WIDTH * 3) / 4 + 8;
+    const int TUYA_Y = CLOCK_Y;
+    const int TUYA_W = WIDTH - TUYA_X - 10;
+    const int TUYA_H = CLOCK_H -30;
     // clear the box
     if (clearFirst)
     { 
       epaper.fillRect(CLOCK_X + 5, CLOCK_Y, (CLOCK_W/2), 50, TFT_BLACK); // (405, 50, 400, 180)
       epaper.fillRect(CLOCK_X + 5, CLOCK_Y, (CLOCK_W/2), 50, TFT_WHITE); // (405, 50, 400, 180)
+      // epaper.fillRect(TUYA_X, TUYA_Y, TUYA_W, TUYA_H - 30, TFT_WHITE);
       epaper.update();
     }
     
@@ -133,6 +175,8 @@ void drawClockBox(EPaper& epaper, const WeatherState& S, bool clearFirst = false
     String line = getNextSalahRemainingTimeText(S, ti);
 
     epaper.drawString(line, col1X, y );  // show under the table
+    if(!clearFirst)
+      drawTuyaPanel(epaper, TUYA_X, TUYA_Y, TUYA_W, TUYA_H);
 }
 
 String getNextSalahRemainingTimeText(const WeatherState& S, tm ti)
@@ -254,6 +298,7 @@ static void drawNowLeft(EPaper& epaper, const WeatherState& S) {
   epaper.setTextSize(1);
   epaper.setFreeFont(&FreeSansBold9pt7b);
   int y = tempY + numH + V_GAP+30;
+  const int detailCol2X = MARGIN_L + (NOW_LEFT_W - 2 * MARGIN_L) / 2;
 
   epaper.drawString("Feels like:", MARGIN_L, y);
   const int feelsX = MARGIN_L + textWidth("Feels like:", DETAIL_SIZE);
@@ -267,10 +312,25 @@ static void drawNowLeft(EPaper& epaper, const WeatherState& S) {
   epaper.drawString(humBuf, MARGIN_L, y);  y += LINE_H + V_GAP;
 
   char windBuf[32]; snprintf(windBuf,sizeof(windBuf),"Wind %.0f %s", isnan(S.currentWind)?0:S.currentWind, WIND_UNIT);
-  epaper.drawString(windBuf, MARGIN_L, y); y += LINE_H + V_GAP;
+  epaper.drawString(windBuf, MARGIN_L, y);
+  char maxBuf[24];
+  if (S.dailyCount > 0 && !isnan(S.dailyMax[0])) {
+    snprintf(maxBuf, sizeof(maxBuf), "Max %.0f C", S.dailyMax[0]);
+  } else {
+    snprintf(maxBuf, sizeof(maxBuf), "Max --");
+  }
+  epaper.drawString(maxBuf, detailCol2X, y);
+  y += LINE_H + V_GAP;
 
   char precipBuf[32]; snprintf(precipBuf,sizeof(precipBuf), "Precip %.1f mm", isnan(S.currentPrecip)?0:S.currentPrecip);
   epaper.drawString(precipBuf, MARGIN_L, y);
+  char minBuf[24];
+  if (S.dailyCount > 0 && !isnan(S.dailyMin[0])) {
+    snprintf(minBuf, sizeof(minBuf), "Min %.0f C", S.dailyMin[0]);
+  } else {
+    snprintf(minBuf, sizeof(minBuf), "Min --");
+  }
+  epaper.drawString(minBuf, detailCol2X, y);
 
   // Sunrise/Sunset immediately after precip (at bottom of left pane)
   if (S.dailyCount > 0) {

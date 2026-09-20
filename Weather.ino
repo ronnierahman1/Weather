@@ -14,6 +14,7 @@ using fs::FS;
 #include "weather_data.h"
 #include "weather_api.h"
 #include "weather_binding.h"
+#include "tuya_client.h"
 #include "ui.h"
 #include "salah_ui.h"
 #include "ui_weather.h"
@@ -195,7 +196,7 @@ void fetchData(bool showProgress = true)
 {
   // setInfoTextSettings(epaper);
   wifiConnect(showProgress);
-  fetchDataDisplay fd[9];
+  fetchDataDisplay fd[10];
   int x=20, y=70, lineSpacing=25;
 
   fd[0] =(fetchDataDisplay){"Fetching Data...", x, y};
@@ -226,37 +227,43 @@ void fetchData(bool showProgress = true)
     fetchPrayersAndHijri(state); // prime at boot
   duration = millis() - start;
   fd[3] = (fetchDataDisplay){"Fetching Prayers + Hijri... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 2};
+
+  // tuya sensors (fetched once per data cycle, then rendered from cache)
+  start = millis();
+  refreshTuyaSnapshot();
+  duration = millis() - start;
+  fd[4] = (fetchDataDisplay){"Fetching Tuya Sensors... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 3};
   
   // fetchHackerNews
   start = millis();
   fetchHackerNewsFromPi(hackernewsTitles, hackernewsCount);
   duration = millis() - start;
-  fd[4] = (fetchDataDisplay){"Fetching Hacker News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 3};
+  fd[5] = (fetchDataDisplay){"Fetching Hacker News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 4};
 
   start = millis();
   //make fetchXdaNews to report progress
   duration = millis() - start;
-  fd[5] = (fetchDataDisplay){"Fetching XDA News... skipped. Work in progress. Took " + String(duration) + "ms", x, y + lineSpacing * 4};
+  fd[6] = (fetchDataDisplay){"Fetching XDA News... skipped. Work in progress. Took " + String(duration) + "ms", x, y + lineSpacing * 5};
 
   // fetchScienceDailyNews
   start = millis();
   fetchScienceDailyNewsFromPi(scienceDailyTitles, scienceDailyCount);
   duration = millis() - start;
-  fd[6] = (fetchDataDisplay){"Fetching Science Daily News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 5};
+  fd[7] = (fetchDataDisplay){"Fetching Science Daily News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 6};
 
   // fetchNewScientistNews
   start = millis();
   fetchNewScientistNewsFromPi(newScientistTitles, newScientistCount);
   duration = millis() - start;
-  fd[7] = (fetchDataDisplay){"Fetching New Scientist News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 6};
+  fd[8] = (fetchDataDisplay){"Fetching New Scientist News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 7};
 
   // fetchTheScientistNews
   start = millis();
   fetchTheScientistNewsFromPi(theScientistTitles, theScientistCount);
   duration = millis() - start;
-  fd[8] = (fetchDataDisplay){"Fetching The Scientist News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 7};
+  fd[9] = (fetchDataDisplay){"Fetching The Scientist News... Done. Took " + String(duration) + "ms", x, y + lineSpacing * 8};
   if(showProgress) {
-  for(int i=0;i<9;i++){
+  for(int i=0;i<10;i++){
     displayText(epaper, fd[i].message, fd[i].x, fd[i].y, false);
     }
   epaper.update();
@@ -604,10 +611,10 @@ void loop()
       displayNewScientistNewsDashboard(mode);
       break;
 
-    case 11:
-      mode = Second_Page;
-      displayNewScientistNewsDashboard(mode);
-      break;
+    // case 11:
+    //   mode = Second_Page;
+    //   displayNewScientistNewsDashboard(mode);
+    //   break;
 
     case 12:
       wifiConnect(false); // re-enable Wi-Fi for data fetching
