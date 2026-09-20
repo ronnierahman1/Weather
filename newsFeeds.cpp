@@ -3,7 +3,7 @@
 #include "newsFeeds.h"
 #include "globals.h"
 #include "fonts_data.h"
-#include "makkah_small.h"
+// #include "makkah_small.h"
 
 static inline int charW(int sz) { return 7 * sz; }
 static inline int charW2(int sz) { return 5 * sz; }
@@ -93,10 +93,10 @@ void renderNewsDashboard(EPaper &ep,
     const int headH = charH(HEAD_SZ) + headerY + 18;
     
     ep.drawFastHLine(0, headH, 800, TFT_BLACK);
-    if(mode != Full_Page)
-    {
-        ep.update(620, 45, 180, 180, (uint16_t*)gImage_makkah_small);  // Makkah image
-    }
+    // if(mode != Full_Page)
+    // {
+    //     ep.update(620, 45, 180, 180, (uint16_t*)gImage_makkah_small);  // Makkah image
+    // }
     // Build header text
     String dt;
     if (lastUpdatedHHMM.length())
