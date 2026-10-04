@@ -106,6 +106,19 @@ static void updateLastUpdatedLabelFromNow()
   lastUpdatedLabel = two(ti.tm_hour) + ":" + two(ti.tm_min);
 }
 
+static void updateLastUpdatedLabelWithStep(uint8_t step)
+{
+  struct tm ti;
+  String timeLabel = "--:--";
+  if (getLocalTime(&ti))
+  {
+    timeLabel = two(ti.tm_hour) + ":" + two(ti.tm_min);
+  }
+
+  const uint8_t shownStep = (uint8_t)((step % 12) + 1);
+  lastUpdatedLabel = timeLabel + " | step " + String(shownStep) + " of 12";
+}
+
 // Helpful: readable formatted "last updated" for header
 static String nowPretty()
 {
@@ -547,6 +560,7 @@ void loop()
     return;
 
   nextStepAtMs = nowMs + (uint32_t)sleep_seconds;
+  updateLastUpdatedLabelWithStep(step);
 
   PageRenderMode mode;
 
@@ -616,7 +630,7 @@ void loop()
     //   displayNewScientistNewsDashboard(mode);
     //   break;
 
-    case 12:
+    case 11:
       wifiConnect(false); // re-enable Wi-Fi for data fetching
       fetchData(false);
       updateLastUpdatedLabelFromNow();    
@@ -625,5 +639,5 @@ void loop()
       break;
   }
 
-  step = (uint8_t)((step + 1) % 14);
+  step = (uint8_t)((step + 1) % 12);
 }
